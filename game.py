@@ -70,7 +70,10 @@ class LiarsBarEnv:
 		self.player_turn = self.next_player_turn()
 		
 	def is_valid_turn(self, cards: List[Card]) -> bool:
-		return cards and 0 < len(cards) <= self.MAX_CARDS_PER_TURN and not self.is_last_player_with_a_hand()
+		return cards and 0 < len(cards) <= self.MAX_CARDS_PER_TURN and not self.is_last_player_with_a_hand() and self.check_player_has_given_cards(self.get_current_player(), cards)
+	
+	def check_player_has_given_cards(self, player: Player, cards: List[Card]) -> bool:
+		return all(card in player.hand for card in cards)
 
 	def remove_played_cards_from_hand(self, cards: List[Card]) -> None:
 		current_player = self.get_current_player()
@@ -95,11 +98,7 @@ class LiarsBarEnv:
 		self.shoot_player(player)
 	
 	def shoot_player(self, player: Player) -> None:
-		player.bullets_shot += 1
-		if player.bullets_shot == player.death_bullet:
+		if player.take_shot():
 			self.remove_player(player)
 			print(f"Player {player.name} has been killed")
-			self.player_turn = 0
-		else:
-			self.player_turn = self.players.index(player)
-	
+		self.player_turn = 0 if player not in self.players else self.players.index(player)
