@@ -5,6 +5,12 @@ import random
 
 from player import Player
 
+class InvalidTurnError(Exception):
+    pass
+
+class InvalidChallengeError(Exception):
+    pass
+
 class LiarsBarEnv:
 	TABLE_CARDS = ['Q', 'K', 'A']
 	MAX_CARDS_PER_TURN = 3
@@ -56,14 +62,12 @@ class LiarsBarEnv:
 		active_players = [player for player in self.players if player.hand]
 		return len(active_players) <= 1
 
-	def play_turn(self, cards: List[Card]) -> bool:
+	def play_turn(self, cards: List[Card]) -> None:
 		if not self.is_valid_turn(cards):
-			print("Invalid turn played")
-			return False
+			raise InvalidTurnError("Invalid turn played")
 		self.last_played_cards = cards
 		self.remove_played_cards_from_hand(cards)
 		self.player_turn = self.next_player_turn()
-		return True
 		
 	def is_valid_turn(self, cards: List[Card]) -> bool:
 		return cards and 0 < len(cards) <= self.MAX_CARDS_PER_TURN and not self.is_last_player_with_a_hand()
@@ -77,16 +81,14 @@ class LiarsBarEnv:
 		return all(card.rank == self.table_card or card.rank == 'Joker' for card in self.last_played_cards)
 
 
-	def challenge_last_player(self) -> bool:
+	def challenge_last_player(self) -> None:
 		if not self.last_played_cards:
-			print("Invalid challenge played")
-			return False
+			raise InvalidChallengeError("No cards played yet")
 		self.round_finished = True
 		if self.check_last_played_cards():
 			self.lose_round(self.get_current_player())
 		else:
 			self.lose_round(self.players[self.previous_player_turn()])
-		return True
 	
 	def lose_round(self, player: Player) -> None:
 		print(f"Player {player.name} has lost! You will be shot now!")
@@ -96,7 +98,7 @@ class LiarsBarEnv:
 		player.bullets_shot += 1
 		if player.bullets_shot == player.death_bullet:
 			self.remove_player(player)
-			print(f"Player {player.name} has been shot")
+			print(f"Player {player.name} has been killed")
 			self.player_turn = 0
 		else:
 			self.player_turn = self.players.index(player)

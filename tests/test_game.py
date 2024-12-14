@@ -1,6 +1,7 @@
 from card import Card
-from game import LiarsBarEnv
+from game import InvalidChallengeError, InvalidTurnError, LiarsBarEnv
 from player import Player
+import pytest
 
 def test_initialize_round():
   game = LiarsBarEnv()
@@ -49,6 +50,18 @@ def test_remove_player():
   assert len(game.players) == 1
   assert game.players[0].name == "Player B"
 
+
+def test_invalid_turn():
+  game = LiarsBarEnv()
+  game.add_player(Player("Player A"))
+  game.add_player(Player("Player B"))
+  game.initialize_round()
+  with pytest.raises(InvalidTurnError):
+      game.play_turn([])  # Playing 0 cards should raise an error
+  with pytest.raises(InvalidTurnError):
+      game.play_turn([game.get_current_player().hand[0]] * 4)  # Playing 4 cards should raise an error
+
+
 def test_play_turn():
   game = LiarsBarEnv()
   game.add_player(Player("Player A"))
@@ -67,7 +80,8 @@ def test_challenge_on_start_round():
   game.add_player(Player("Player A"))
   game.add_player(Player("Player B"))
   game.initialize_round()
-  assert game.challenge_last_player() == False
+  with pytest.raises(InvalidChallengeError):
+    game.challenge_last_player()
 
 def test_play_turn_on_last_player():
   game = LiarsBarEnv()
@@ -80,8 +94,9 @@ def test_play_turn_on_last_player():
   game.play_turn([player_b.hand[0]])
   game.play_turn([player_a.hand[0], player_a.hand[1]])
   # Player B is the last player so he can only challenge
-  assert game.play_turn([player_b.hand[0], player_b.hand[1]]) == False
-  assert game.challenge_last_player() == True
+  with pytest.raises(InvalidTurnError):
+    game.play_turn([player_b.hand[0]])
+  game.challenge_last_player()
 
 def test_challenge_last_player_liar():
   game = LiarsBarEnv()
@@ -99,7 +114,7 @@ def test_challenge_last_player_liar():
   game.play_turn([player_a.hand[0]])
 
   # Player B challenges Player A
-  assert game.challenge_last_player() == True
+  game.challenge_last_player()
   assert player_a.bullets_shot == 1
   assert game.player_turn == 0
   
@@ -119,7 +134,7 @@ def test_challenge_last_player_truth_on_rank():
   game.play_turn([player_a.hand[0]])
 
   # Player B challenges Player A and fails
-  assert game.challenge_last_player() == True
+  game.challenge_last_player()
   assert player_b.bullets_shot == 1
   # Player B starts the next round as he is the loser
   assert game.player_turn == 1
@@ -137,25 +152,9 @@ def test_challenge_last_player_truth_on_joker():
 
   player_a.hand[0].rank = 'Joker'
   game.play_turn([player_a.hand[0]])
-  assert game.challenge_last_player() == True
+  game.challenge_last_player()
   assert player_b.bullets_shot == 1
   assert game.player_turn == 1
-
-def test_play_0_cards():
-  game = LiarsBarEnv()
-  game.add_player(Player("Player A"))
-  game.add_player(Player("Player B"))
-  game.initialize_round()
-  assert game.play_turn([]) == False
-
-def test_play_4_cards():
-  game = LiarsBarEnv()
-  player_a = Player("Player A")
-  player_b = Player("Player B")
-  game.add_player(player_a)
-  game.add_player(player_b)
-  game.initialize_round()
-  assert game.play_turn([player_a.hand[0], player_a.hand[1], player_a.hand[2], player_a.hand[3]]) == False
 
 def test_is_last_player_with_a_hand():
     game = LiarsBarEnv()
