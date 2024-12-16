@@ -6,10 +6,11 @@ import random
 from player import Player
 
 class InvalidTurnError(Exception):
-    pass
+	def __init__(self, message: str, player: Player, cards: List[Card]):
+		super().__init__(f"{message} | Player: {player.name} | Cards: {cards}")
 
 class InvalidChallengeError(Exception):
-    pass
+	pass
 
 class LiarsBarEnv:
 	TABLE_CARDS = ['Q', 'K', 'A']
@@ -25,15 +26,16 @@ class LiarsBarEnv:
 		self.round_finished = False
 		self.last_played_cards = None
 		self.deck = None
+		self.previous_player_index = None
 
 	def add_player(self, player) -> None:
 		self.players.append(player)
 
 	def next_player_turn(self) -> int:
-		return (self.player_turn + 1) % len(self.players)
-	
-	def previous_player_turn(self) -> int:
-		return (self.player_turn - 1) % len(self.players)
+		next_index = (self.player_turn + 1) % len(self.players)
+		while not self.players[next_index].hand:
+			next_index = (next_index + 1) % len(self.players)
+		return next_index
 
 	def get_current_player(self) -> Player:
 		return self.players[self.player_turn]
@@ -63,14 +65,19 @@ class LiarsBarEnv:
 		return len(active_players) <= 1
 
 	def play_turn(self, cards: List[Card]) -> None:
-		if not self.is_valid_turn(cards):
-			raise InvalidTurnError("Invalid turn played")
+		self.is_valid_turn(cards)
 		self.last_played_cards = cards
 		self.remove_played_cards_from_hand(cards)
+		self.previous_player_index = self.player_turn
 		self.player_turn = self.next_player_turn()
 		
 	def is_valid_turn(self, cards: List[Card]) -> bool:
-		return cards and 0 < len(cards) <= self.MAX_CARDS_PER_TURN and not self.is_last_player_with_a_hand() and self.check_player_has_given_cards(self.get_current_player(), cards)
+		if cards is None or len(cards) <= 0 or len(cards) > self.MAX_CARDS_PER_TURN:
+			raise InvalidTurnError("You must play between 1 and 3 cards", self.get_current_player(), cards)
+		if self.is_last_player_with_a_hand():
+			raise InvalidTurnError("You are the last player with cards! You must challenge!", self.get_current_player(), cards)
+		if not self.check_player_has_given_cards(self.get_current_player(), cards):
+			raise InvalidTurnError("You must play cards that you have in your hand", self.get_current_player(), cards)
 	
 	def check_player_has_given_cards(self, player: Player, cards: List[Card]) -> bool:
 		return all(card in player.hand for card in cards)
@@ -91,7 +98,7 @@ class LiarsBarEnv:
 		if self.check_last_played_cards():
 			self.lose_round(self.get_current_player())
 		else:
-			self.lose_round(self.players[self.previous_player_turn()])
+			self.lose_round(self.players[self.previous_player_index])
 	
 	def lose_round(self, player: Player) -> None:
 		print(f"Player {player.name} has lost! You will be shot now!")
