@@ -25,7 +25,7 @@ def play_round(game: LiarsBarEnv) -> None:
   game.initialize_round()
   while not game.round_finished:
     if game.last_played_cards is not None:
-      print(f"Last player has played {len(game.last_played_cards)}q cards")
+      print(f"Last player has played {len(game.last_played_cards)} cards")
     print(f"Current player: {game.get_current_player().name}")
     print("Current table card:", game.table_card)
     execute_player_action(game)
