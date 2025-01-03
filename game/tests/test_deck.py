@@ -1,4 +1,4 @@
-from deck import Deck
+from game.deck import Deck
 
 def test_deck_has_20_cards():
     deck = Deck()

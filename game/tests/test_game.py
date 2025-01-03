@@ -1,10 +1,10 @@
-from card import Card
-from game import InvalidChallengeError, InvalidTurnError, LiarsBarEnv
-from human_player import HumanPlayer
+from game.card import Card
+from game.game import InvalidChallengeError, InvalidTurnError, LiarsBarGame
+from game.human_player import HumanPlayer
 import pytest
 
 def test_initialize_round():
-  game = LiarsBarEnv()
+  game = LiarsBarGame()
   game.add_player(HumanPlayer("Player A"))
   game.add_player(HumanPlayer("Player B"))
   game.initialize_round()
@@ -12,12 +12,12 @@ def test_initialize_round():
     assert len(player.hand) == 5
     assert player.bullets_shot == 0
     assert player.death_bullet >= 1 and player.death_bullet <= 6
-  assert game.table_card in LiarsBarEnv.TABLE_CARDS
+  assert game.table_card in LiarsBarGame.TABLE_CARDS
   assert game.last_played_cards == None
   assert game.round_finished == False
 
 def test_next_player_turn():
-  game = LiarsBarEnv()
+  game = LiarsBarGame()
   game.add_player(HumanPlayer("Player A"))
   game.add_player(HumanPlayer("Player B"))
   game.initialize_round()
@@ -26,7 +26,7 @@ def test_next_player_turn():
   assert game.next_player_turn() == 0
 
 def test_previous_player_turn():
-  game = LiarsBarEnv()
+  game = LiarsBarGame()
   player_a = HumanPlayer("Player A")
   player_b = HumanPlayer("Player B")
   game.add_player(player_a)
@@ -38,7 +38,7 @@ def test_previous_player_turn():
   assert game.previous_player_index == 1
 
 def test_get_current_player():
-  game = LiarsBarEnv()
+  game = LiarsBarGame()
   game.add_player(HumanPlayer("Player A"))
   game.add_player(HumanPlayer("Player B"))
   assert game.get_current_player().name == "Player A"
@@ -46,7 +46,7 @@ def test_get_current_player():
   assert game.get_current_player().name == "Player B"
 
 def test_remove_player():
-  game = LiarsBarEnv()
+  game = LiarsBarGame()
   player_a = HumanPlayer("Player A")
   player_b = HumanPlayer("Player B")
   game.add_player(player_a)
@@ -57,7 +57,7 @@ def test_remove_player():
 
 
 def test_invalid_turn():
-  game = LiarsBarEnv()
+  game = LiarsBarGame()
   game.add_player(HumanPlayer("Player A"))
   game.add_player(HumanPlayer("Player B"))
   game.initialize_round()
@@ -68,7 +68,7 @@ def test_invalid_turn():
 
 
 def test_play_turn():
-  game = LiarsBarEnv()
+  game = LiarsBarGame()
   game.add_player(HumanPlayer("Player A"))
   game.add_player(HumanPlayer("Player B"))
   game.initialize_round()
@@ -81,7 +81,7 @@ def test_play_turn():
   assert game.player_turn == 1
 
 def test_challenge_on_start_round():
-  game = LiarsBarEnv()
+  game = LiarsBarGame()
   game.add_player(HumanPlayer("Player A"))
   game.add_player(HumanPlayer("Player B"))
   game.initialize_round()
@@ -89,7 +89,7 @@ def test_challenge_on_start_round():
     game.challenge_last_player()
 
 def test_play_turn_on_last_player():
-  game = LiarsBarEnv()
+  game = LiarsBarGame()
   player_a = HumanPlayer("Player A")
   player_b = HumanPlayer("Player B")
   game.add_player(player_a)
@@ -104,7 +104,7 @@ def test_play_turn_on_last_player():
   game.challenge_last_player()
 
 def test_challenge_last_player_liar():
-  game = LiarsBarEnv()
+  game = LiarsBarGame()
   player_a = HumanPlayer("Player A")
   player_b = HumanPlayer("Player B")
   game.add_player(player_a)
@@ -124,7 +124,7 @@ def test_challenge_last_player_liar():
   assert game.player_turn == 0
   
 def test_challenge_last_player_truth_on_rank():
-  game = LiarsBarEnv()
+  game = LiarsBarGame()
   player_a = HumanPlayer("Player A")
   player_b = HumanPlayer("Player B")
   game.add_player(player_a)
@@ -145,7 +145,7 @@ def test_challenge_last_player_truth_on_rank():
   assert game.player_turn == 1
 
 def test_challenge_last_player_truth_on_joker():
-  game = LiarsBarEnv()
+  game = LiarsBarGame()
   player_a = HumanPlayer("Player A")
   player_b = HumanPlayer("Player B")
   game.add_player(player_a)
@@ -162,7 +162,7 @@ def test_challenge_last_player_truth_on_joker():
   assert game.player_turn == 1
 
 def test_is_last_player_with_a_hand():
-    game = LiarsBarEnv()
+    game = LiarsBarGame()
     player_a = HumanPlayer("Player A")
     player_b = HumanPlayer("Player B")
     game.add_player(player_a)

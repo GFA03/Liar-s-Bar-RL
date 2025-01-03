@@ -1,17 +1,17 @@
 import os
 import time
-from game import InvalidChallengeError, InvalidTurnError, LiarsBarEnv
+from game import InvalidChallengeError, InvalidTurnError, LiarsBarGame
 from human_player import HumanPlayer
 from random_player import RandomPlayer
 
-def initialize_game() -> LiarsBarEnv:
-  game = LiarsBarEnv()
+def initialize_game() -> LiarsBarGame:
+  game = LiarsBarGame()
   while not add_players(game):
     print("You should add at least two players")
     pass
   return game
 
-def add_players(game: LiarsBarEnv) -> None:
+def add_players(game: LiarsBarGame) -> None:
   name = input("Enter a name or press Enter to stop: ")
   while name != "" and len(game.players) < 3:
     game.add_player(HumanPlayer(name))
@@ -20,7 +20,7 @@ def add_players(game: LiarsBarEnv) -> None:
     game.add_player(HumanPlayer(name))
   return 1 < len(game.players) <= 4
 
-def play_round(game: LiarsBarEnv) -> None:
+def play_round(game: LiarsBarGame) -> None:
   display_round_status(game)
   game.initialize_round()
   while not game.round_finished:
@@ -35,14 +35,14 @@ def play_round(game: LiarsBarEnv) -> None:
 def clear_screen() -> None:
   os.system('cls' if os.name == 'nt' else 'clear')
 
-def display_round_status(game: LiarsBarEnv) -> None:
+def display_round_status(game: LiarsBarGame) -> None:
   print('Initializing round!')
   print('Players:')
   for player in game.players:
     print(f'{player.name} - {player.bullets_shot}/{game.MAX_DEATH_BULLET} shots')
   print()
 
-def execute_player_action(game: LiarsBarEnv) -> None:
+def execute_player_action(game: LiarsBarGame) -> None:
   while True:
     chosen_option, chosen_cards = game.get_current_player().choose_action()
     try:

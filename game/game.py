@@ -12,7 +12,7 @@ class InvalidTurnError(Exception):
 class InvalidChallengeError(Exception):
 	pass
 
-class LiarsBarEnv:
+class LiarsBarGame:
 	TABLE_CARDS = ['Q', 'K', 'A']
 	MAX_CARDS_PER_TURN = 3
 	INITIAL_HAND_SIZE = 5
