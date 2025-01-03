@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import List
-from card import Card
+from game.card import Card
 
 class Player(ABC):
     def __init__(self, name: str) -> None:

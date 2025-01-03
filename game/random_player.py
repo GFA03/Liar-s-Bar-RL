@@ -1,7 +1,7 @@
 import random
 from typing import List
-from card import Card
-from player import Player
+from game.card import Card
+from game.player import Player
 
 class RandomPlayer(Player):
   def choose_action(self) -> tuple[int, List[Card]]:

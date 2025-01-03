@@ -1,9 +1,9 @@
 from typing import List
-from card import Card
-from deck import Deck
+from game.card import Card
+from game.deck import Deck
 import random
 
-from player import Player
+from game.player import Player
 
 class InvalidTurnError(Exception):
 	def __init__(self, message: str, player: Player, cards: List[Card]):

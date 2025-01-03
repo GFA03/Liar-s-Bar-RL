@@ -42,24 +42,15 @@ class LiarsBarEnv(gym.Env):
             "player_turn": spaces.Discrete(num_players)
         })
 
-        # Action space: Discrete actions (0: play cards, 1: challenge)
-        self.action_space = spaces.Tuple((
-            spaces.Discrete(2),  # Action type: Play (0) or Challenge (1)
-            spaces.MultiBinary(self.INITIAL_HAND_SIZE)  # 0 or 1 for each card in hand
-        ))
+        # Action space: Discrete actions (0 - challenge, 1..31 all combinations of playing cards)
+        self.action_space = spaces.Discrete(2**self.INITIAL_HAND_SIZE)
 
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
 
         self.players = [self._create_player(i) for i in range(self.num_players)]
         self.alive_players = [player for player in self.players]
-        self.deck = self._initialize_deck()
-        self.table_card = random.choice(self.TABLE_CARDS)
-        self.last_played_cards = []
-        self.player_turn = 0
-        self.round_finished = False
-
-        self._deal_cards()
+        self.reset_round()
 
         return self._get_observation(), {}
     
@@ -89,15 +80,13 @@ class LiarsBarEnv(gym.Env):
             "alive": 0 if current_player not in self.alive_players else 1
         }
 
-    def step(self, action: Tuple[int, List[int]]):
-        action_type, cards = action
-
+    def step(self, action: int):
         current_player = self.alive_players[self.player_turn]
 
-        if action_type == 1 or self._calculate_active_players_in_round() == 1:  # Challenge
+        if action == 0 or self._calculate_active_players_in_round() == 1:  # Challenge
             self._challenge_previous_player()
         else:  # Play cards
-            self._play_turn(cards)
+            self._play_turn(action)
 
         reward = self._calculate_reward(current_player)
 
@@ -144,7 +133,7 @@ class LiarsBarEnv(gym.Env):
             next_index = (next_index + 1) % len(self.alive_players)
         return next_index
 
-    def _get_available_actions(self) -> List[Tuple[int, List[int]]]:
+    def _get_available_actions(self) -> List[int]:
         """
         Determine all valid actions for the current player given the state of the game.
         Returns:
@@ -159,34 +148,30 @@ class LiarsBarEnv(gym.Env):
         available_actions = []
 
         if self.last_played_cards:
-            # Action type 1: Challenge
-            available_actions.append((1, ()))  # No cards are played in a challenge action
+            # Challenge
+            available_actions.append(0)  # No cards are played in a challenge action
 
         if self._calculate_active_players_in_round() > 1:
-            # Action type 0: Play cards
-            hand_size = len(hand)
-            for num_cards in range(1, self.MAX_CARDS_PER_TURN + 1):  # 1 to MAX_CARDS_PER_TURN cards
-                # Generate all combinations of indices for selecting `num_cards` cards
-                for card_indices in combinations(range(hand_size), num_cards):
-                    # Check if all selected cards exist in the player's hand
-                    if all(hand[idx] != -1 for idx in card_indices):
-                        # Create a binary action vector
-                        binary_action = [0] * hand_size
-                        for idx in card_indices:
-                            binary_action[idx] = 1
-                        available_actions.append((0, tuple(binary_action)))
+            # Play cards
+            for action in range(1, 2**self.INITIAL_HAND_SIZE):
+                cards_binary = [int(x) for x in format(action, f"0{self.INITIAL_HAND_SIZE}b")]
+                if sum(cards_binary) > self.MAX_CARDS_PER_TURN:
+                    continue
+                if all(hand[idx] != -1 for idx in range(len(hand)) if cards_binary[idx] == 1):
+                    available_actions.append(action)
 
         return available_actions
 
-    def _play_turn(self, cards: List[int]):
+    def _play_turn(self, action: int):
         current_player = self.alive_players[self.player_turn]
+        cards_binary = [int(x) for x in format(action, f"0{self.INITIAL_HAND_SIZE}b")]
         
-        if sum(cards) > self.MAX_CARDS_PER_TURN or sum(cards) == 0:
+        if sum(cards_binary) > self.MAX_CARDS_PER_TURN or sum(cards_binary) == 0:
             raise ValueError("Too many cards played")
 
-        self.last_played_cards = [current_player["hand"][i] for i in range(len(cards)) if cards[i] == 1]
+        self.last_played_cards = [current_player["hand"][i] for i in range(len(cards_binary)) if cards_binary[i] == 1]
         
-        for i, play_card in enumerate(cards):
+        for i, play_card in enumerate(cards_binary):
             if play_card == 1:
                 if current_player['hand'][i] == -1:
                     raise ValueError("Card already played")

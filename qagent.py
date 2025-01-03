@@ -27,8 +27,7 @@ class QLearningAgent:
         """Update Q-table based on the action taken and reward received."""
         state_key = self._state_to_key(state)
         next_state_key = self._state_to_key(next_state)
-        print(action)
-
+        
         # Initialize Q-values for the state-action pair if not already done
         if action not in self.q_table[state_key]:
             self.q_table[state_key][action] = 0.0

@@ -1,8 +1,8 @@
 import os
 import time
-from game import InvalidChallengeError, InvalidTurnError, LiarsBarGame
-from human_player import HumanPlayer
-from random_player import RandomPlayer
+from game.game import InvalidChallengeError, InvalidTurnError, LiarsBarGame
+from game.human_player import HumanPlayer
+from game.random_player import RandomPlayer
 
 def initialize_game() -> LiarsBarGame:
   game = LiarsBarGame()

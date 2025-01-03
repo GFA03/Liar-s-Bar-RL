@@ -1,7 +1,7 @@
 from typing import List
-from card import Card
-from player import Player
-from utils import read_int
+from game.card import Card
+from game.player import Player
+from game.utils import read_int
 
 class HumanPlayer(Player):      
   def choose_action(self) -> tuple[int, List[Card]]:
