@@ -20,6 +20,7 @@ class LiarsBarEnv(gym.Env):
     MIN_DEATH_BULLET = 1
     MAX_DEATH_BULLET = 6
     NUMBER_OF_DISTINCT_RANKS = 4
+    EMPTY_HAND = [-1, -1, -1, -1, -1]
 
     def __init__(self, num_players: int = 2):
         super(LiarsBarEnv, self).__init__()
@@ -49,7 +50,7 @@ class LiarsBarEnv(gym.Env):
         super().reset(seed=seed)
 
         self.players = [self._create_player(i) for i in range(self.num_players)]
-        self.alive_players = [player for player in self.players]
+        self.alive_players = [True for _ in self.players]
         self.reset_round()
 
         return self._get_observation(), {}
@@ -57,7 +58,10 @@ class LiarsBarEnv(gym.Env):
     def reset_round(self):
         self.table_card = random.choice(self.TABLE_CARDS)
         self.last_played_cards = []
-        self.player_turn = 0
+        self.player_turn = self.previous_player_index if self.previous_player_index is not None else 0
+        if self.alive_players[self.player_turn] == False:
+            self.player_turn = self.next_player_turn()
+        self.previous_player_index = None
         self.round_finished = False
 
         self.deck = self._initialize_deck()
@@ -66,48 +70,53 @@ class LiarsBarEnv(gym.Env):
         return self._get_observation()
 
     def _deal_cards(self):
-        for player in self.players:
-            player["hand"] = [self.deck.pop() for _ in range(self.INITIAL_HAND_SIZE)]
+        for i, player in enumerate(self.players):
+            if self.alive_players[i]:
+                player["hand"] = [self.deck.pop() for _ in range(self.INITIAL_HAND_SIZE)]
 
-    def _get_observation(self, current_player: dict = None) -> Dict:
-        current_player_hand = current_player["hand"] if current_player else []
+    def _get_observation(self) -> Dict:
+        current_player_hand = self.players[self.player_turn]["hand"]
 
         return {
             "hand": current_player_hand,
             "table_card": self.table_card,
-            "last_played": len(self.last_played_cards),
-            "player_turn": self.player_turn,
-            "alive": 0 if current_player not in self.alive_players else 1
+            "last_played": len(self.last_played_cards)
         }
 
     def step(self, action: int):
-        current_player = self.alive_players[self.player_turn]
+        current_player = self.players[self.player_turn]
 
-        if action == 0 or self._calculate_active_players_in_round() == 1:  # Challenge
+        if action == 0:  # Challenge
             self._challenge_previous_player()
         else:  # Play cards
             self._play_turn(action)
 
         reward = self._calculate_reward(current_player)
+        observation = self._get_observation()
 
-        if len(self.alive_players) == 1:
+        # Check if there is a winner
+        if sum(self.alive_players) == 1:
             done = True
         elif self.round_finished:
             self.reset_round()
             done = False
         else:
+            self.previous_player_index = self.player_turn
+            self.player_turn = self.next_player_turn()
             done = False
 
-        return self._get_observation(current_player), reward, done, {}
+        return observation, reward, done, {}
     
     def _calculate_active_players_in_round(self):
-        return len([player for player in self.alive_players if player["hand"] != [-1, -1, -1, -1, -1]])
+        return len([player for player in self.players if player["hand"] != self.EMPTY_HAND and self.alive_players[player["id"]]])
 
     def render(self, mode="human"):
         print(f"Table card: {self.table_card}")
         print(f"Current player turn: {self.player_turn}")
-        for i, player in enumerate(self.alive_players):
-            print(f"Player {i} {player['bullets_shot']}/{player['death_bullet']}", end=" ")
+        for i, player in enumerate(self.players):
+            if not self.alive_players[i]:
+                continue
+            print(f"Player {player["id"]} {player['bullets_shot']}/{player['death_bullet']}", end=" ")
             for j in range(self.INITIAL_HAND_SIZE):
                 print(player["hand"][j], end= " ")
             print()
@@ -128,9 +137,9 @@ class LiarsBarEnv(gym.Env):
     
     def next_player_turn(self):
         """Finds the next active player (player with cards in hand)."""
-        next_index = (self.player_turn + 1) % len(self.alive_players)
-        while self.alive_players[next_index]["hand"] == [-1, -1, -1, -1, -1]:
-            next_index = (next_index + 1) % len(self.alive_players)
+        next_index = (self.player_turn + 1) % len(self.players)
+        while self.players[next_index]["hand"] == self.EMPTY_HAND or not self.alive_players[next_index]:
+            next_index = (next_index + 1) % len(self.players)
         return next_index
 
     def _get_available_actions(self) -> List[int]:
@@ -142,7 +151,7 @@ class LiarsBarEnv(gym.Env):
             - action_type: 0 for play, 1 for challenge
             - cards_to_play: A binary list indicating which cards to play (length matches hand size)
         """
-        current_player = self.alive_players[self.player_turn]
+        current_player = self.players[self.player_turn]
         hand = current_player["hand"]
 
         available_actions = []
@@ -163,7 +172,7 @@ class LiarsBarEnv(gym.Env):
         return available_actions
 
     def _play_turn(self, action: int):
-        current_player = self.alive_players[self.player_turn]
+        current_player = self.players[self.player_turn]
         cards_binary = [int(x) for x in format(action, f"0{self.INITIAL_HAND_SIZE}b")]
         
         if sum(cards_binary) > self.MAX_CARDS_PER_TURN or sum(cards_binary) == 0:
@@ -177,30 +186,50 @@ class LiarsBarEnv(gym.Env):
                     raise ValueError("Card already played")
                 current_player["hand"][i] = -1
 
-
-        self.previous_player_index = self.player_turn
-        self.player_turn = self.next_player_turn()
-
     def _challenge_previous_player(self):
         if self.previous_player_index is None:
             raise ValueError("No previous player to challenge")
 
         if all(card == self.table_card or card == Card.Joker for card in self.last_played_cards):
-            self._apply_bullet(self.alive_players[self.player_turn])
+            self._apply_bullet(self.players[self.player_turn])
         else:
-            self._apply_bullet(self.alive_players[self.previous_player_index])
+            self._apply_bullet(self.players[self.previous_player_index])
 
         self.round_finished = True
 
     def _apply_bullet(self, player):
         player["bullets_shot"] += 1
         if player["bullets_shot"] == player["death_bullet"]:
-            self.alive_players.remove(player)
+            self.alive_players[player["id"]] = False
 
     def _calculate_reward(self, current_player: dict):
-        if current_player not in self.alive_players:
-            return -10
-        elif len(self.alive_players) == 1:
-            return 10
-        else:
-            return 0
+        """
+        Calculates the reward for the current player based on game outcomes and actions.
+        Returns:
+            float: Reward value for the current player.
+        """
+        # Base rewards
+        if not self.alive_players[current_player["id"]]:  # Player is eliminated
+            return -50  # Large penalty for elimination
+        
+        if sum(self.alive_players) == 1 and self.alive_players[current_player["id"]]:  # Player wins the game
+            return 100  # Large reward for winning
+        
+        reward = 0  # Default reward
+
+        # Intermediate rewards
+        if self.round_finished:
+            if current_player["hand"] == self.EMPTY_HAND:  # Hand is empty
+                reward += 20  # Bonus for finishing hand
+            if self.previous_player_index is not None and current_player == self.players[self.previous_player_index]:
+                if all(card == self.table_card or card == Card.Joker for card in self.last_played_cards):
+                    reward += 15  # Reward for successfully bluffing or playing matching cards
+                else:
+                    reward -= 10  # Penalty for unsuccessful play/challenge
+
+        # Participation rewards
+        if len(self.last_played_cards) > 0:
+            reward += 5  # Slight reward for active participation
+
+        return reward
+

@@ -27,6 +27,8 @@ class QLearningAgent:
         """Update Q-table based on the action taken and reward received."""
         state_key = self._state_to_key(state)
         next_state_key = self._state_to_key(next_state)
+
+        print(action)
         
         # Initialize Q-values for the state-action pair if not already done
         if action not in self.q_table[state_key]:
@@ -45,5 +47,4 @@ class QLearningAgent:
         hand_key = tuple(state["hand"])
         table_card_key = state["table_card"]
         last_played_key = state["last_played"]
-        player_turn_key = state["player_turn"]
-        return (hand_key, table_card_key, last_played_key, player_turn_key)
+        return (hand_key, table_card_key, last_played_key)
