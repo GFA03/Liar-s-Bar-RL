@@ -1,3 +1,5 @@
+from copy import copy
+
 import gymnasium as gym
 from gymnasium import spaces
 import numpy as np
@@ -6,9 +8,9 @@ from typing import Dict, Tuple, List
 
 class LiarsBarEdiEnv(gym.Env):
     WIN_REWARD = 100
-    LOSS_REWARD = -100
+    LOSS_REWARD = -1000
     CARD_PLACED_REWARD = 10
-    CORRECT_CHALLENGE_REWARD = 100
+    CORRECT_CHALLENGE_REWARD = 50
 
     def __init__(self, num_players: int = 4):
         super(LiarsBarEdiEnv, self).__init__()
@@ -37,7 +39,7 @@ class LiarsBarEdiEnv(gym.Env):
         self._current_player_index = np.random.randint(0, self._num_players)
         self._previous_player_index = None
         self._number_of_finished_players = 0
-        self._table_card = np.random.choice([1, 2, 3])
+        self._table_card = int(np.random.choice([1, 2, 3]))
         self._history = []
         deck = [0, 0, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3]
         np.random.shuffle(deck)
@@ -54,9 +56,9 @@ class LiarsBarEdiEnv(gym.Env):
         hand = self._players[self._current_player_index]["hand"]
 
         return {
-            "hand": hand,
-            "table_card": self._table_card,
-            "history": self._history,
+            "hand": copy(hand),
+            "table_card": copy(self._table_card),
+            "history": copy(self._history),
         }
 
 

@@ -1,4 +1,4 @@
-from monte_carlo.env_edi import LiarsBarEdiEnv
+from monte_carlo.mc_env import LiarsBarEdiEnv
 from monte_carlo.mc_agent import MonteCarloAgent
 from monte_carlo.random_agent import RandomAgent
 
@@ -9,7 +9,7 @@ class MonteCarloTrainer:
         self.agent = agent
 
     def train(self, episodes = 100):
-        for _ in range(episodes):
+        for episode_number in range(episodes):
             self.env.reset()
 
             done = False
@@ -24,7 +24,7 @@ class MonteCarloTrainer:
             for i in range(4):
                 self.agent.learn(episode[i])
 
-            print(f"Finished episode {_}")
+            print(f"Finished episode {episode_number}")
 
 
 
@@ -36,15 +36,17 @@ if __name__ == "__main__":
     random_agent = RandomAgent(env)
     trainer = MonteCarloTrainer(env, agent)
 
-    trainer.train(episodes=10000)
+    trainer.train(episodes=100000)
+    # for key, value in agent.Q.items():
+    #     print(f"{key}: {value}")
 
-    # After training, the agent can act as follows:
-    for tests in range(10000):
+
+    for tests in range(50):
         print("********************")
         env.reset()
-        state = env.get_obs()
         done = False
         while not done:
+            state = env.get_obs()
             action = agent.act(state)
-            state, reward, done, _ = env.step(action)
+            _, reward, done, _ = env.step(action)
             print(f"State: {state}, Action: {action}, Reward: {reward}")

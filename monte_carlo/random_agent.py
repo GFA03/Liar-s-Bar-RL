@@ -1,6 +1,6 @@
 import random
 
-from monte_carlo.env_edi import LiarsBarEdiEnv
+from monte_carlo.mc_env import LiarsBarEdiEnv
 
 
 class RandomAgent:
