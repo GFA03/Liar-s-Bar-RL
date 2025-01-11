@@ -238,18 +238,56 @@ def train_dqn_agent(env: LiarsBarEdiEnv, episodes=1000):
     return agent
 
 
+def train_n_dqn(env: LiarsBarEdiEnv, no_agents: int = 4, episodes=100):
+    agents = [DQNAgent(env, gamma=0.8, epsilon=0.3, lr=1e-2, batch_size=32, buffer_capacity=20000) for _ in range(no_agents)]
+
+    for episode in range(episodes):
+        state, _ = env.reset()
+        done = False
+        total_rewards = [0] * no_agents
+        steps = 0
+
+        while not done:
+           for i in range(no_agents):
+                action = agents[i].choose_action(state)
+                next_state, reward, done, _ = env.step(action)
+                total_rewards[i] += reward
+                steps += 1
+
+                agents[i].remember(state, action, reward, next_state, done)
+                agents[i].train_step()
+
+                state = next_state
+                # print(f'Agent{i} {state} {reward}')
+
+                if done:
+                    break
+        print(f"Episode: {episode + 1}/{episodes}, Steps: {steps}, Total Reward: {total_rewards}")
+
+    print("Training finished!")
+    return agents
+
+
 if __name__ == "__main__":
-    env = LiarsBarEdiEnv(num_players=4)
-    dqn_agent = train_dqn_agent(env, episodes=200)
+    no_agents = 4
+    env = LiarsBarEdiEnv(num_players=no_agents)
+    dqn_agents = train_n_dqn(env, no_agents=no_agents, episodes=100)
 
     print("\n--- Testing the trained agent ---")
     state, _ = env.reset()
     done = False
-    test_reward = 0
-    while not done:
-        action = dqn_agent.act(state)
-        next_state, reward, done, _ = env.step(action)
-        test_reward += reward
-        state = next_state
+    rewards = [0] * no_agents
 
-    print(f"Test reward: {test_reward}")
+    while not done:
+        for i in range(no_agents):
+            action = dqn_agents[i].act(state)
+            next_state, reward, done, _ = env.step(action)
+            rewards[i] += reward
+            state = next_state
+
+            if done:
+                break
+
+            print(state, reward)
+
+    print(f"Test rewards: {rewards}")
