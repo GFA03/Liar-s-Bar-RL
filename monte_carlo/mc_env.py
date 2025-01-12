@@ -59,6 +59,7 @@ class LiarsBarEdiEnv(gym.Env):
             "hand": copy(hand),
             "table_card": copy(self._table_card),
             "history": copy(self._history),
+            "num_players": self._num_players
         }
 
 

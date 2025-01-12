@@ -92,7 +92,7 @@ class LiarsBarRound:
         self._current_player = starting_player
         self._previous_player = None
         self._previous_action = None
-        self._table_card = random.choice([0, 1, 2, 3])
+        self._table_card = random.choice([1, 2, 3])
         self._history = []
         self._loser = None
         self._logs = logs
