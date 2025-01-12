@@ -9,6 +9,7 @@ from monte_carlo.mc_env import LiarsBarEdiEnv
 
 class MonteCarloAgent:
     def __init__(self, env: LiarsBarEdiEnv, epsilon: float = 0.1, gamma: float = 0.9):
+        self.name = "MonteCarloAgent"
         self.env = env
         self.epsilon = epsilon  # Exploration rate
         self.gamma = gamma      # Discount factor
@@ -66,7 +67,7 @@ class MonteCarloAgent:
         """Choose the best action for the given state using the learned policy."""
         state_key = self._get_state_key(state)
 
-        available_actions = self.env._get_available_actions()
+        available_actions = LiarsBarEdiEnv.get_available_actions(state)
 
         if state_key not in self.Q:
             return random.choice(available_actions)

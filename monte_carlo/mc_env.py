@@ -70,6 +70,7 @@ class LiarsBarEdiEnv(gym.Env):
 
     def step(self, action: Tuple[int, int, int, int]):
         self._player_reward_history[self._current_player_index].append({
+            "players": self._num_players,
             "state": self._get_obs(),
             "action": action,
             "reward": 0,
@@ -158,6 +159,29 @@ class LiarsBarEdiEnv(gym.Env):
                             available_actions.append([jokers, valets, queens, kings])
 
         return available_actions
+
+    @classmethod
+    def get_available_actions(cls, state):
+        available_actions = []
+        hand = state["hand"]
+        history = state["history"]
+        num_players = state["num_players"]
+
+        if len(history) > 0:
+            available_actions.append([0, 0, 0, 0])
+
+        if num_players * 5 - sum(history) == sum(hand):
+            return available_actions
+
+        for jokers in range(hand[0] + 1):
+            for valets in range(hand[1] + 1):
+                for queens in range(hand[2] + 1):
+                    for kings in range(hand[3] + 1):
+                        if 1 <= jokers + valets + queens + kings <= 3:
+                            available_actions.append([jokers, valets, queens, kings])
+
+        return available_actions
+
 
 
 

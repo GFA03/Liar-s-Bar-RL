@@ -49,6 +49,8 @@ class DQNAgent:
             batch_size=32,
             buffer_capacity=20000
     ):
+
+        self.name = "DQN Agent"
         self.env = env
         self.gamma = gamma
         self.epsilon = epsilon
@@ -196,7 +198,7 @@ class DQNAgent:
         """
         Choose best action
         """
-        available_actions = self.env._get_available_actions()
+        available_actions = LiarsBarEdiEnv.get_available_actions(state)
         state_vec = self.encode_state(state)
         best_action = None
         best_q = -1e9
