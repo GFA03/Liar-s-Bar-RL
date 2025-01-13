@@ -15,8 +15,8 @@ class QNetwork(nn.Module):
     def __init__(self, state_dim: int, action_dim: int, hidden_size=64):
         super(QNetwork, self).__init__()
         self.fc1 = nn.Linear(state_dim + action_dim, hidden_size)
-        self.fc2 = nn.Linear(hidden_size, hidden_size)
-        self.out = nn.Linear(hidden_size, 1)
+        self.fc2 = nn.Linear(hidden_size, hidden_size // 3)
+        self.out = nn.Linear(hidden_size // 3, 1)
 
     def forward(self, state_action):
         x = F.relu(self.fc1(state_action))
@@ -24,6 +24,8 @@ class QNetwork(nn.Module):
         q_value = self.out(x)
         return q_value
 
+    def save(self, path):
+        torch.save(self.model.state_dict(), path)
 
 class ReplayBuffer:
     def __init__(self, capacity=20000):
@@ -211,83 +213,3 @@ class DQNAgent:
                 best_action = a
         return best_action
 
-
-def train_dqn_agent(env: LiarsBarEdiEnv, episodes=1000):
-    agent = DQNAgent(env, gamma=0.9, epsilon=0.1, lr=1e-3, batch_size=32, buffer_capacity=20000)
-
-    for episode in range(episodes):
-        state, _ = env.reset()
-        done = False
-        total_reward = 0.0
-        steps = 0
-
-        while not done:
-            action = agent.choose_action(state)
-            next_state, reward, done, _ = env.step(action)
-            total_reward += reward
-            steps += 1
-
-            agent.remember(state, action, reward, next_state, done)
-            agent.train_step()
-
-            state = next_state
-            print(state)
-        print(f"Episode: {episode + 1}/{episodes}, Steps: {steps}, Total Reward: {total_reward}")
-
-    print("Training finished!")
-    return agent
-
-
-def train_n_dqn(env: LiarsBarEdiEnv, no_agents: int = 4, episodes=100):
-    agents = [DQNAgent(env, gamma=0.8, epsilon=0.3, lr=1e-2, batch_size=32, buffer_capacity=20000) for _ in range(no_agents)]
-
-    for episode in range(episodes):
-        state, _ = env.reset()
-        done = False
-        total_rewards = [0] * no_agents
-        steps = 0
-
-        while not done:
-           for i in range(no_agents):
-                action = agents[i].choose_action(state)
-                next_state, reward, done, _ = env.step(action)
-                total_rewards[i] += reward
-                steps += 1
-
-                agents[i].remember(state, action, reward, next_state, done)
-                agents[i].train_step()
-
-                state = next_state
-                # print(f'Agent{i} {state} {reward}')
-
-                if done:
-                    break
-        print(f"Episode: {episode + 1}/{episodes}, Steps: {steps}, Total Reward: {total_rewards}")
-
-    print("Training finished!")
-    return agents
-
-
-if __name__ == "__main__":
-    no_agents = 4
-    env = LiarsBarEdiEnv(num_players=no_agents)
-    dqn_agents = train_n_dqn(env, no_agents=no_agents, episodes=100)
-
-    print("\n--- Testing the trained agent ---")
-    state, _ = env.reset()
-    done = False
-    rewards = [0] * no_agents
-
-    while not done:
-        for i in range(no_agents):
-            action = dqn_agents[i].act(state)
-            next_state, reward, done, _ = env.step(action)
-            rewards[i] += reward
-            state = next_state
-
-            if done:
-                break
-
-            print(state, reward)
-
-    print(f"Test rewards: {rewards}")
