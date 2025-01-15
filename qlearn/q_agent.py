@@ -1,3 +1,4 @@
+from xmlrpc.client import MININT
 import numpy as np
 import random
 from collections import defaultdict
@@ -48,3 +49,14 @@ class QLearningAgent:
         table_card_key = state["table_card"]
         history_key = tuple(state["history"])
         return (hand_key, table_card_key, history_key)
+
+    def act(self, state):
+        state_key = self._state_to_key(state)
+
+        available_actions = self.env.get_available_actions(state)
+
+        if state_key not in self.q_table:
+            return random.choice(available_actions)
+
+        # Exploit learned policy (choose action with highest Q value)
+        return max(available_actions, key=lambda a: self.q_table[state_key].get(tuple(a), MININT))

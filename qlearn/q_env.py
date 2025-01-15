@@ -6,12 +6,12 @@ import random
 from itertools import combinations
 
 class Card(Enum):
-    Q = 0
-    K = 1
-    A = 2
-    Joker = 3
+    Joker = 0
+    Q = 1
+    K = 2
+    A = 3
 
-class LiarsBarEnv(gym.Env):
+class QLearningEnv(gym.Env):
     metadata = {"render.modes": ["human"]}
 
     TABLE_CARDS = [Card.Q, Card.K, Card.A]
@@ -20,10 +20,10 @@ class LiarsBarEnv(gym.Env):
     MIN_DEATH_BULLET = 1
     MAX_DEATH_BULLET = 6
     NUMBER_OF_DISTINCT_RANKS = 4
-    EMPTY_HAND = [-1, -1, -1, -1, -1]
+    EMPTY_HAND = [0, 0, 0, 0]
 
     def __init__(self, num_players: int = 2):
-        super(LiarsBarEnv, self).__init__()
+        super(QLearningEnv, self).__init__()
 
         self.num_players = num_players
         self.players = []
@@ -37,14 +37,13 @@ class LiarsBarEnv(gym.Env):
 
         # Observation space: Dict containing hand, table card, and last played cards
         self.observation_space = spaces.Dict({
-            "hand": spaces.MultiDiscrete([self.NUMBER_OF_DISTINCT_RANKS] * self.INITIAL_HAND_SIZE),
-            "table_card": spaces.Discrete(len(self.TABLE_CARDS)),
-            "last_played": spaces.Discrete(self.MAX_CARDS_PER_TURN + 1),
-            "player_turn": spaces.Discrete(num_players)
+            "hand": spaces.MultiDiscrete([self.INITIAL_HAND_SIZE + 1] * self.NUMBER_OF_DISTINCT_RANKS),
+            "table_card": spaces.Discrete(len(self.TABLE_CARDS) + 1),
+            "last_played": spaces.Discrete(self.MAX_CARDS_PER_TURN + 1)
         })
 
         # Action space: Discrete actions (0 - challenge, 1..31 all combinations of playing cards)
-        self.action_space = spaces.Discrete(2**self.INITIAL_HAND_SIZE)
+        self.action_space = spaces.MultiDiscrete([self.MAX_CARDS_PER_TURN + 1] * self.NUMBER_OF_DISTINCT_RANKS)
 
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
@@ -72,7 +71,9 @@ class LiarsBarEnv(gym.Env):
     def _deal_cards(self):
         for i, player in enumerate(self.players):
             if self.alive_players[i]:
-                player["hand"] = [self.deck.pop() for _ in range(self.INITIAL_HAND_SIZE)]
+                self._players[i]["hand"] = [0 for _ in range(4)]
+                for _ in range(5):
+                    self._players[i]["hand"][self.deck.pop()] += 1
 
     def _get_observation(self) -> Dict:
         current_player_hand = self.players[self.player_turn]["hand"]
@@ -80,13 +81,13 @@ class LiarsBarEnv(gym.Env):
         return {
             "hand": current_player_hand,
             "table_card": self.table_card,
-            "last_played": len(self.last_played_cards)
+            "last_played": sum(self.last_played_cards)
         }
 
     def step(self, action: int):
         current_player = self.players[self.player_turn]
 
-        if action == 0:  # Challenge
+        if action == [0, 0, 0, 0]:  # Challenge
             self._challenge_previous_player()
         else:  # Play cards
             self._play_turn(action)
@@ -106,6 +107,32 @@ class LiarsBarEnv(gym.Env):
             done = False
 
         return observation, reward, done, {}
+    
+
+    def _play_turn(self, action: List[int]):
+        current_player = self.players[self.player_turn]
+        
+        if sum(action) > self.MAX_CARDS_PER_TURN or sum(action) == 0:
+            raise ValueError("Too many cards played")
+        if any(current_player["hand"][card] < action[card] for card in range(4)):
+            raise ValueError("Player doesn't have all those cards")
+
+        self.last_played_cards = action.copy()
+        
+        for i in range(4):
+            current_player["hand"][i] -= action[i]
+
+    def _challenge_previous_player(self):
+        if self.previous_player_index is None:
+            raise ValueError("No previous player to challenge")
+
+        if self.table_card == 1 and (self.last_played_cards[2] > 0 or self.last_played_cards[3] > 0) or self.table_card == 2 and (self.last_played_cards[1] > 0 or self.last_played_cards[3] > 0) or self.table_card == 3 and (self.last_played_cards[1] > 0 or self.last_played_cards[2] > 0):
+            self._apply_bullet(self.players[self.previous_player_index])
+        else:
+            self._apply_bullet(self.players[self.player_turn])
+
+        self.round_finished = True
+
     
     def _calculate_active_players_in_round(self):
         return len([player for player in self.players if player["hand"] != self.EMPTY_HAND and self.alive_players[player["id"]]])
@@ -170,32 +197,6 @@ class LiarsBarEnv(gym.Env):
                     available_actions.append(action)
 
         return available_actions
-
-    def _play_turn(self, action: int):
-        current_player = self.players[self.player_turn]
-        cards_binary = [int(x) for x in format(action, f"0{self.INITIAL_HAND_SIZE}b")]
-        
-        if sum(cards_binary) > self.MAX_CARDS_PER_TURN or sum(cards_binary) == 0:
-            raise ValueError("Too many cards played")
-
-        self.last_played_cards = [current_player["hand"][i] for i in range(len(cards_binary)) if cards_binary[i] == 1]
-        
-        for i, play_card in enumerate(cards_binary):
-            if play_card == 1:
-                if current_player['hand'][i] == -1:
-                    raise ValueError("Card already played")
-                current_player["hand"][i] = -1
-
-    def _challenge_previous_player(self):
-        if self.previous_player_index is None:
-            raise ValueError("No previous player to challenge")
-
-        if all(card == self.table_card or card == Card.Joker for card in self.last_played_cards):
-            self._apply_bullet(self.players[self.player_turn])
-        else:
-            self._apply_bullet(self.players[self.previous_player_index])
-
-        self.round_finished = True
 
     def _apply_bullet(self, player):
         player["bullets_shot"] += 1
